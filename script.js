@@ -46,4 +46,3 @@ fetch(dataURL)
         });
     })
     .catch(err => console.error("Error loading data: ", err));
-
