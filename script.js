@@ -1,107 +1,219 @@
-const dataURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=0&single=true&output=csv";
+// Premium dashboard script
+const BRAND = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
+const CSV_URL = window.DATA_URL;
 
-fetch(dataURL)
-    .then(response => response.text())
-    .then(data => {
-        const rows = data.split("\n").map(row => row.split(","));
-        const headers = rows[0];
-        const months = rows.slice(1).map(row => row[0]);
+// Utility: parse CSV (simple)
+function parseCSV(text) {
+  const rows = text.trim().split(/\r?\n/).map(r => r.split(','));
+  return { headers: rows[0], rows: rows.slice(1) };
+}
 
-        function getColumnData(colName) {
-            const index = headers.indexOf(colName);
-            return rows.slice(1).map(row => parseInt(row[index]) || 0);
-        }
+// Utility: get column by name as numbers (or strings)
+function col(data, name, asNumber = true) {
+  const idx = data.headers.indexOf(name);
+  const arr = data.rows.map(r => r[idx] ?? '');
+  return asNumber ? arr.map(v => (v === '' ? 0 : Number(v))) : arr;
+}
 
-        // KPI Data
-        const kpiMetrics = [
-            "Total Man Hours worked",
-            "Safe Man Hours Worked Without LTI",
-            "Average Manpower",
-            "Nearmiss Incidents Reported",
-            "Risk Assessments",
-            "HSE Audits conducted"
-        ];
+// Utility: month labels
+function monthsFromData(data) {
+  return col(data, 'Month', false);
+}
 
-        // Add summary cards
-        const summaryCardsContainer = document.getElementById("summaryCards");
-        kpiMetrics.forEach(metric => {
-            const total = getColumnData(metric).reduce((a,b) => a+b, 0);
-            const card = document.createElement("div");
-            card.classList.add("col-md-2");
-            card.innerHTML = `<div class="card-kpi">
-                                <div class="value">${total}</div>
-                                <div class="label">${metric}</div>
-                              </div>`;
-            summaryCardsContainer.appendChild(card);
-        });
+// Filter data by month range
+function sliceByMonths(data, startLabel, endLabel) {
+  const months = monthsFromData(data);
+  const start = months.indexOf(startLabel);
+  const end = months.indexOf(endLabel);
+  const s = start >= 0 ? start : 0;
+  const e = end >= 0 ? end : months.length - 1;
+  const rows = data.rows.slice(s, e + 1);
+  return { headers: data.headers, rows };
+}
 
-        // Charts
-        const mtiData = getColumnData("Medical Treatment Injury");
-        const ltiData = getColumnData("Lost Time Injury");
-        const fatalData = getColumnData("Fatal Incidents");
-        const rtiData = getColumnData("Road Traffic Incident");
-        const pdiData = getColumnData("Property Damage Incident");
-        const envData = getColumnData("Environmental Incidents");
-        const clientObsData = getColumnData("Client HSE observation");
-        const internalObsData = getColumnData("Internal HSE observation");
-        const totalManhoursData = getColumnData("Total Man Hours worked");
-        const safeManhoursData = getColumnData("Safe Man Hours Worked Without LTI");
-        const avgManpowerData = getColumnData("Average Manpower");
+// Gauge plugin to draw center text
+const centerText = {
+  id: 'centerText',
+  afterDraw(chart, args, options) {
+    const {ctx, chartArea: {width, height}} = chart;
+    ctx.save();
+    ctx.font = '700 28px Arial';
+    ctx.fillStyle = BRAND;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(options.text || '', chart.getDatasetMeta(0).data[0].x, chart.getDatasetMeta(0).data[0].y);
+    ctx.restore();
+  }
+};
 
-        // Incidents Chart
-        new Chart(document.getElementById("incidentsChart"), {
-            type: 'bar',
-            data: {
-                labels: months,
-                datasets: [
-                    { label: 'Medical Treatment Injury', data: mtiData, backgroundColor: 'rgba(255,99,132,0.6)' },
-                    { label: 'Lost Time Injury', data: ltiData, backgroundColor: 'rgba(255,159,64,0.6)' },
-                    { label: 'Fatal Incidents', data: fatalData, backgroundColor: 'rgba(54,162,235,0.6)' },
-                    { label: 'Road Traffic Incident', data: rtiData, backgroundColor: 'rgba(75,192,192,0.6)' },
-                    { label: 'Property Damage Incident', data: pdiData, backgroundColor: 'rgba(153,102,255,0.6)' },
-                    { label: 'Environmental Incidents', data: envData, backgroundColor: 'rgba(255,206,86,0.6)' }
-                ]
-            }
-        });
+let charts = [];
 
-        // Observations Chart
-        new Chart(document.getElementById("observationsChart"), {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [
-                    { label: 'Client HSE Observations', data: clientObsData, borderColor: 'rgba(255,99,132,1)', fill: false },
-                    { label: 'Internal HSE Observations', data: internalObsData, borderColor: 'rgba(54,162,235,1)', fill: false }
-                ]
-            }
-        });
+function destroyCharts() {
+  charts.forEach(c => c.destroy());
+  charts = [];
+}
 
-        // Manhours & Manpower Chart
-        new Chart(document.getElementById("manhoursChart"), {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [
-                    { label: 'Total Man Hours Worked', data: totalManhoursData, borderColor: 'rgba(75,192,192,1)', fill: false },
-                    { label: 'Safe Man Hours Without LTI', data: safeManhoursData, borderColor: 'rgba(255,206,86,1)', fill: false },
-                    { label: 'Average Manpower', data: avgManpowerData, borderColor: 'rgba(153,102,255,1)', fill: false }
-                ]
-            }
-        });
+function makeKPI(container, label, value, sparkData) {
+  const col = document.createElement('div');
+  col.className = 'col-6 col-md-4 col-lg-2';
+  col.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-value">${value.toLocaleString()}</div>
+      <div class="kpi-label">${label}</div>
+      <canvas class="kpi-spark"></canvas>
+    </div>`;
+  container.appendChild(col);
+  const ctx = col.querySelector('canvas').getContext('2d');
+  charts.push(new Chart(ctx, {
+    type: 'line',
+    data: { labels: sparkData.map((_,i)=>i+1), datasets: [{ data: sparkData, borderColor: BRAND, fill: false, tension: 0.3, pointRadius: 0 }]},
+    options: { responsive: true, plugins: { legend: { display:false } }, scales: { x: { display:false }, y: { display:false } } }
+  }));
+}
 
-        // Training & Audits Chart
-        const inductionData = getColumnData("Induction Training");
-        const auditsData = getColumnData("HSE Audits conducted");
+function renderAll(data) {
+  destroyCharts();
 
-        new Chart(document.getElementById("trainingChart"), {
-            type: 'bar',
-            data: {
-                labels: months,
-                datasets: [
-                    { label: 'Induction Training', data: inductionData, backgroundColor: 'rgba(75,192,192,0.6)' },
-                    { label: 'HSE Audits Conducted', data: auditsData, backgroundColor: 'rgba(255,159,64,0.6)' }
-                ]
-            }
-        });
-    })
-    .catch(err => console.error("Error loading data: ", err));
+  // Months and selectors
+  const months = monthsFromData(data);
+  const startSel = document.getElementById('startMonth');
+  const endSel = document.getElementById('endMonth');
+  [startSel, endSel].forEach(sel => { sel.innerHTML = months.map(m=>`<option>${m}</option>`).join(''); });
+  endSel.value = months[months.length-1];
+
+  // Build datasets
+  const firstAid = col(data, 'First Aid Injury');
+  const mti = col(data, 'Medical Treatment Injury');
+  const rwi = col(data, 'Restricted work Injury');
+  const lti = col(data, 'Lost Time Injury');
+  const propertyDamage = col(data, 'Property Damage Incident');
+  const environmental = col(data, 'Environmental Incidents');
+  const clientObs = col(data, 'Client HSE observation');
+  const internalObs = col(data, 'Internal HSE observation');
+  const totalManhours = col(data, 'Total Man Hours worked');
+  const safeManhours = col(data, 'Safe Man Hours Worked Without LTI');
+  const avgManpower = col(data, 'Average Manpower');
+  const induction = col(data, 'Induction Training');
+  const audits = col(data, 'HSE Audits conducted');
+  const lastIncidentDates = col(data, 'Last Incident Date', false);
+
+  // KPI cards
+  const cards = document.getElementById('kpiCards');
+  cards.innerHTML = '';
+  const totalIncidents = mti.map((v,i)=>v + lti[i] + firstAid[i] + rwi[i]).reduce((a,b)=>a+b,0);
+  makeKPI(cards, 'Total Incidents (YTD)', totalIncidents, mti.map((v,i)=>v + lti[i] + firstAid[i] + rwi[i]));
+  makeKPI(cards, 'Property Damage (YTD)', propertyDamage.reduce((a,b)=>a+b,0), propertyDamage);
+  makeKPI(cards, 'Environmental (YTD)', environmental.reduce((a,b)=>a+b,0), environmental);
+  makeKPI(cards, 'Total Manhours (YTD)', totalManhours.reduce((a,b)=>a+b,0), totalManhours);
+  makeKPI(cards, 'Safe Manhours (YTD)', safeManhours.reduce((a,b)=>a+b,0), safeManhours);
+  makeKPI(cards, 'Avg Manpower (Mean)', Math.round(avgManpower.reduce((a,b)=>a+b,0)/Math.max(1,avgManpower.length)), avgManpower);
+
+  // Gauge: Days since last incident
+  const parsedDates = lastIncidentDates.map(d => d ? new Date(d) : null).filter(Boolean);
+  let days = 0;
+  if (parsedDates.length) {
+    const last = parsedDates.sort((a,b)=>b-a)[0];
+    const diffMs = Date.now() - last.getTime();
+    days = Math.max(0, Math.floor(diffMs / (1000*60*60*24)));
+  }
+  const gaugeCtx = document.getElementById('daysGauge').getContext('2d');
+  const maxGauge = 120; // scale for display
+  const clamped = Math.min(days, maxGauge);
+  const gaugeData = [clamped, maxGauge - clamped];
+  charts.push(new Chart(gaugeCtx, {
+    type: 'doughnut',
+    plugins: [centerText],
+    data: { datasets: [{ data: gaugeData, backgroundColor: [BRAND, '#e9ecef'], borderWidth: 0 }] },
+    options: {
+      cutout: '75%',
+      rotation: -90,
+      circumference: 180,
+      plugins: { legend: { display: false }, centerText: { text: String(days) } }
+    }
+  }));
+
+  // Incidents monthly sparkline
+  const sparkCtx = document.getElementById('incidentsSparkline').getContext('2d');
+  const monthlyTotals = mti.map((v,i)=>v + lti[i] + firstAid[i] + rwi[i]);
+  charts.push(new Chart(sparkCtx, {
+    type: 'line',
+    data: { labels: months, datasets: [{ label: 'Incidents', data: monthlyTotals, borderColor: BRAND, fill:false, tension: 0.3 }]},
+    options: { plugins: { legend: { display:false } }, scales: { y: { beginAtZero: true } } }
+  }));
+
+  // Incidents by Severity (stacked)
+  const sevCtx = document.getElementById('incidentsSeverity').getContext('2d');
+  charts.push(new Chart(sevCtx, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'First Aid', data: firstAid, backgroundColor: '#5bc0de' },
+        { label: 'MTI', data: mti, backgroundColor: '#ffc107' },
+        { label: 'Restricted', data: rwi, backgroundColor: '#20c997' },
+        { label: 'LTI', data: lti, backgroundColor: BRAND }
+      ]
+    },
+    options: { responsive: true, scales: { x: { stacked:true }, y: { stacked:true, beginAtZero:true } } }
+  }));
+
+  // Incident Types (horizontal)
+  const typeCtx = document.getElementById('incidentTypes').getContext('2d');
+  const types = ['Property Damage Incident', 'Environmental Incidents'];
+  const typeValues = [propertyDamage.reduce((a,b)=>a+b,0), environmental.reduce((a,b)=>a+b,0)];
+  charts.push(new Chart(typeCtx, {
+    type: 'bar',
+    data: { labels: types, datasets: [{ data: typeValues, backgroundColor: [BRAND, '#6c757d'] }] },
+    options: { indexAxis: 'y', plugins: { legend: { display:false } }, scales: { x: { beginAtZero:true } } }
+  }));
+
+  // Observations
+  const obsCtx = document.getElementById('observationsChart').getContext('2d');
+  charts.push(new Chart(obsCtx, {
+    type: 'line',
+    data: { labels: months, datasets: [
+      { label: 'Client HSE', data: clientObs, borderColor: BRAND, fill:false, tension:0.3 },
+      { label: 'Internal HSE', data: internalObs, borderColor: '#0d6efd', fill:false, tension:0.3 }
+    ]},
+    options: { responsive: true }
+  }));
+
+  // Manhours & Manpower with target line
+  const mhCtx = document.getElementById('manhoursChart').getContext('2d');
+  charts.push(new Chart(mhCtx, {
+    type: 'line',
+    data: { labels: months, datasets: [
+      { label: 'Total Manhours', data: totalManhours, borderColor: BRAND, fill:false, tension:0.3 },
+      { label: 'Safe Manhours', data: safeManhours, borderColor: '#20c997', fill:false, tension:0.3 },
+      { label: 'Avg Manpower', data: avgManpower, borderColor: '#6c757d', fill:false, tension:0.3, yAxisID: 'y1' }
+    ]},
+    options: { responsive:true, scales: { y: { beginAtZero:true }, y1: { position: 'right', beginAtZero:true, grid: { drawOnChartArea:false } } } }
+  }));
+
+  // Training & Audits
+  const trCtx = document.getElementById('trainingChart').getContext('2d');
+  charts.push(new Chart(trCtx, {
+    type: 'bar',
+    data: { labels: months, datasets: [
+      { label: 'Induction Training', data: induction, backgroundColor: '#20c997' },
+      { label: 'HSE Audits', data: audits, backgroundColor: BRAND }
+    ]},
+    options: { responsive:true, scales: { y: { beginAtZero:true } } }
+  }));
+
+  // Apply filter button
+  document.getElementById('applyFilter').onclick = () => {
+    const start = document.getElementById('startMonth').value;
+    const end = document.getElementById('endMonth').value;
+    const sliced = sliceByMonths(data, start, end);
+    renderAll(sliced);
+  };
+}
+
+async function init() {
+  const csv = await fetch(CSV_URL).then(r=>r.text());
+  const data = parseCSV(csv);
+  renderAll(data);
+}
+
+init();

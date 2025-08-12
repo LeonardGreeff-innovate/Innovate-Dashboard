@@ -1,63 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Innovate Agri – OHS Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Innovate Agri – OHS Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-light">
+  <!-- Header -->
+  <header class="bg-white shadow-sm py-3 mb-4 border-bottom">
+    <div class="container d-flex flex-wrap justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-3">
+        <img src="logo.png" alt="Innovate Agri Ltd" height="56">
+        <h1 class="h3 m-0 text-brand fw-bold">OHS Dashboard</h1>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label m-0 small text-muted">Start Month</label>
+        <select id="startMonth" class="form-select form-select-sm"></select>
+        <label class="form-label m-0 small text-muted">End Month</label>
+        <select id="endMonth" class="form-select form-select-sm"></select>
+        <button id="applyFilter" class="btn btn-sm btn-brand">Apply</button>
+      </div>
+    </div>
+  </header>
 
-    <!-- Header -->
-    <header class="bg-white shadow-sm py-3 mb-4">
-        <div class="container d-flex justify-content-between align-items-center">
-            <img src="logo.png" alt="Innovate Agri Ltd" height="60">
-            <h1 class="h3 text-danger fw-bold">OHS Dashboard</h1>
+  <!-- KPI cards -->
+  <section class="container mb-4">
+    <div class="row g-3" id="kpiCards">
+      <!-- KPI Cards injected by JS -->
+    </div>
+  </section>
+
+  <!-- Gauge -->
+  <section class="container mb-5">
+    <div class="row g-3">
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h5 class="card-title text-brand">Days Since Last Incident</h5>
+            <canvas id="daysGauge" height="220"></canvas>
+          </div>
         </div>
-    </header>
-
-    <!-- KPI Summary Cards -->
-    <section class="container mb-5">
-        <div class="row g-3" id="summaryCards">
-            <!-- Cards will be inserted by script.js -->
+      </div>
+      <div class="col-12 col-lg-8">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h5 class="card-title text-brand">Incidents – Monthly Trend</h5>
+            <canvas id="incidentsSparkline"></canvas>
+          </div>
         </div>
-    </section>
+      </div>
+    </div>
+  </section>
 
-    <!-- Tabs Navigation -->
-    <section class="container mb-5">
-        <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="incidents-tab" data-bs-toggle="tab" data-bs-target="#incidents" type="button" role="tab">Incidents</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="observations-tab" data-bs-toggle="tab" data-bs-target="#observations" type="button" role="tab">Observations</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="manhours-tab" data-bs-toggle="tab" data-bs-target="#manhours" type="button" role="tab">Manhours & Manpower</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="training-tab" data-bs-toggle="tab" data-bs-target="#training" type="button" role="tab">Training & Audits</button>
-            </li>
-        </ul>
-        <div class="tab-content bg-white p-4 shadow-sm" id="dashboardTabsContent">
-            <div class="tab-pane fade show active" id="incidents" role="tabpanel">
-                <canvas id="incidentsChart"></canvas>
+  <!-- Tabs -->
+  <section class="container">
+    <ul class="nav nav-tabs" id="tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="incidents-tab" data-bs-toggle="tab" data-bs-target="#incidents" type="button" role="tab">Incidents</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="observations-tab" data-bs-toggle="tab" data-bs-target="#observations" type="button" role="tab">Observations</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="manhours-tab" data-bs-toggle="tab" data-bs-target="#manhours" type="button" role="tab">Manhours & Manpower</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="training-tab" data-bs-toggle="tab" data-bs-target="#training" type="button" role="tab">Training & Audits</button>
+      </li>
+    </ul>
+    <div class="tab-content bg-white p-3 shadow-sm rounded-bottom">
+      <div class="tab-pane fade show active" id="incidents" role="tabpanel">
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h6 class="card-title text-brand">Incidents by Severity</h6>
+                <canvas id="incidentsSeverity"></canvas>
+              </div>
             </div>
-            <div class="tab-pane fade" id="observations" role="tabpanel">
-                <canvas id="observationsChart"></canvas>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h6 class="card-title text-brand">Incident Types</h6>
+                <canvas id="incidentTypes"></canvas>
+              </div>
             </div>
-            <div class="tab-pane fade" id="manhours" role="tabpanel">
-                <canvas id="manhoursChart"></canvas>
-            </div>
-            <div class="tab-pane fade" id="training" role="tabpanel">
-                <canvas id="trainingChart"></canvas>
-            </div>
+          </div>
         </div>
-    </section>
+      </div>
+      <div class="tab-pane fade" id="observations" role="tabpanel">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6 class="card-title text-brand">Observations Trend</h6>
+            <canvas id="observationsChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="manhours" role="tabpanel">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6 class="card-title text-brand">Manhours & Manpower</h6>
+            <canvas id="manhoursChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="training" role="tabpanel">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6 class="card-title text-brand">Training & Audits</h6>
+            <canvas id="trainingChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <script src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>window.DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=0&single=true&output=csv";</script>
+  <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
