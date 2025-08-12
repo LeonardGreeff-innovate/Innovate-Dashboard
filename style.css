@@ -1,30 +1,32 @@
 /* Brand */
-:root {
-  --brand: #E30613;
-}
+:root { --brand: #E30613; }
 
 .text-brand { color: var(--brand) !important; }
 .btn-brand { background: var(--brand); color: #fff; }
 .btn-brand:hover { background: #b50510; color: #fff; }
 
+.btn-outline-brand { border: 1px solid var(--brand); color: var(--brand); background: transparent; }
+.btn-outline-brand:hover { background: var(--brand); color: #fff; }
+
 .card { border: none; border-radius: 12px; }
 .card-title { font-weight: 700; }
 
+/* KPI cards */
 .kpi-card {
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,.06);
-  padding: 16px;
+  padding: 12px;
   height: 100%;
 }
-.kpi-value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--brand);
+.kpi-value { font-size: 1.6rem; font-weight: 800; color: var(--brand); line-height: 1; }
+.kpi-label { color: #6c757d; font-weight: 600; font-size: .9rem; }
+.kpi-spark { height: 36px; }
+
+.chart-totals { text-align: right; }
+
+/* Mobile tweaks */
+@media (max-width: 576px) {
+  .kpi-value { font-size: 1.4rem; }
+  header .form-select { max-width: 120px; }
 }
-.kpi-label { color: #6c757d; font-weight: 600; }
-.kpi-spark { height: 40px; }
-
-/* Gauge center text */
-#daysGauge { max-width: 100%; }
-

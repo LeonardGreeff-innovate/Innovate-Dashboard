@@ -1,54 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Innovate Agri – OHS Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-light">
   <!-- Header -->
-  <header class="bg-white shadow-sm py-3 mb-4 border-bottom">
-    <div class="container d-flex flex-wrap justify-content-between align-items-center">
-      <div class="d-flex align-items-center gap-3">
-        <img src="logo.png" alt="Innovate Agri Ltd" height="56">
-        <h1 class="h3 m-0 text-brand fw-bold">OHS Dashboard</h1>
-      </div>
+  <header class="bg-white shadow-sm py-3 mb-3 border-bottom">
+    <div class="container d-flex flex-wrap justify-content-between align-items-center gap-3">
       <div class="d-flex align-items-center gap-2">
-        <label class="form-label m-0 small text-muted">Start Month</label>
+        <img src="logo.png" alt="Innovate Agri Ltd" height="44" />
+        <h1 class="h4 m-0 text-brand fw-bold">OHS Dashboard</h1>
+      </div>
+      <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">
+        <label class="form-label m-0 small text-muted">Start</label>
         <select id="startMonth" class="form-select form-select-sm"></select>
-        <label class="form-label m-0 small text-muted">End Month</label>
+        <label class="form-label m-0 small text-muted">End</label>
         <select id="endMonth" class="form-select form-select-sm"></select>
         <button id="applyFilter" class="btn btn-sm btn-brand">Apply</button>
       </div>
     </div>
   </header>
 
-  <!-- KPI cards -->
-  <section class="container mb-4">
-    <div class="row g-3" id="kpiCards">
-      <!-- KPI Cards injected by JS -->
-    </div>
+  <!-- KPI cards (mobile-first 2-per-row) -->
+  <section class="container mb-3">
+    <div class="row g-2" id="kpiCards"></div>
   </section>
 
-  <!-- Gauge -->
-  <section class="container mb-5">
-    <div class="row g-3">
+  <!-- Gauge + sparkline (stack on mobile) -->
+  <section class="container mb-4">
+    <div class="row g-2">
       <div class="col-12 col-lg-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
-            <h5 class="card-title text-brand">Days Since Last Incident</h5>
-            <canvas id="daysGauge" height="220"></canvas>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title text-brand mb-0">Days Since Last Incident</h5>
+              <button class="btn btn-outline-brand btn-sm" data-download="daysGauge" data-filename="days_since_last_incident.png">PNG</button>
+            </div>
+            <canvas id="daysGauge" height="200"></canvas>
           </div>
         </div>
       </div>
       <div class="col-12 col-lg-8">
         <div class="card shadow-sm h-100">
           <div class="card-body">
-            <h5 class="card-title text-brand">Incidents – Monthly Trend</h5>
-            <canvas id="incidentsSparkline"></canvas>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title text-brand mb-0">Incidents – Monthly Trend</h5>
+              <button class="btn btn-outline-brand btn-sm" data-download="incidentsSpark" data-filename="incidents_trend.png">PNG</button>
+            </div>
+            <canvas id="incidentsSpark"></canvas>
+            <div class="chart-totals small text-muted mt-2" id="incidentsSparkTotal"></div>
           </div>
         </div>
       </div>
@@ -65,61 +70,91 @@
         <button class="nav-link" id="observations-tab" data-bs-toggle="tab" data-bs-target="#observations" type="button" role="tab">Observations</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="manhours-tab" data-bs-toggle="tab" data-bs-target="#manhours" type="button" role="tab">Manhours & Manpower</button>
+        <button class="nav-link" id="manhours-tab" data-bs-toggle="tab" data-bs-target="#manhours" type="button" role="tab">Manhours</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="training-tab" data-bs-toggle="tab" data-bs-target="#training" type="button" role="tab">Training & Audits</button>
+        <button class="nav-link" id="training-tab" data-bs-toggle="tab" data-bs-target="#training" type="button" role="tab">Training & Risk</button>
       </li>
     </ul>
     <div class="tab-content bg-white p-3 shadow-sm rounded-bottom">
+      <!-- Incidents -->
       <div class="tab-pane fade show active" id="incidents" role="tabpanel">
         <div class="row g-3">
           <div class="col-12 col-lg-6">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm h-100">
               <div class="card-body">
-                <h6 class="card-title text-brand">Incidents by Severity</h6>
-                <canvas id="incidentsSeverity"></canvas>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="card-title text-brand mb-0">Injury Categories</h6>
+                  <button class="btn btn-outline-brand btn-sm" data-download="injuryCats" data-filename="injury_categories.png">PNG</button>
+                </div>
+                <canvas id="injuryCats"></canvas>
+                <div class="chart-totals small text-muted mt-2" id="injuryCatsTotal"></div>
               </div>
             </div>
           </div>
           <div class="col-12 col-lg-6">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm h-100">
               <div class="card-body">
-                <h6 class="card-title text-brand">Incident Types</h6>
-                <canvas id="incidentTypes"></canvas>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="card-title text-brand mb-0">Other Incident Types</h6>
+                  <button class="btn btn-outline-brand btn-sm" data-download="otherInc" data-filename="other_incident_types.png">PNG</button>
+                </div>
+                <canvas id="otherInc"></canvas>
+                <div class="chart-totals small text-muted mt-2" id="otherIncTotal"></div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Observations -->
       <div class="tab-pane fade" id="observations" role="tabpanel">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h6 class="card-title text-brand">Observations Trend</h6>
-            <canvas id="observationsChart"></canvas>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="card-title text-brand mb-0">Observations Trend</h6>
+              <button class="btn btn-outline-brand btn-sm" data-download="obsChart" data-filename="observations_trend.png">PNG</button>
+            </div>
+            <canvas id="obsChart"></canvas>
+            <div class="chart-totals small text-muted mt-2" id="obsChartTotal"></div>
           </div>
         </div>
       </div>
+
+      <!-- Manhours -->
       <div class="tab-pane fade" id="manhours" role="tabpanel">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h6 class="card-title text-brand">Manhours & Manpower</h6>
-            <canvas id="manhoursChart"></canvas>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="card-title text-brand mb-0">Manhours</h6>
+              <button class="btn btn-outline-brand btn-sm" data-download="manChart" data-filename="manhours.png">PNG</button>
+            </div>
+            <canvas id="manChart"></canvas>
+            <div class="chart-totals small text-muted mt-2" id="manChartTotal"></div>
           </div>
         </div>
       </div>
+
+      <!-- Training & Risk -->
       <div class="tab-pane fade" id="training" role="tabpanel">
         <div class="card shadow-sm">
           <div class="card-body">
-            <h6 class="card-title text-brand">Training & Audits</h6>
-            <canvas id="trainingChart"></canvas>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="card-title text-brand mb-0">Training & Risk Assessments</h6>
+              <button class="btn btn-outline-brand btn-sm" data-download="trainChart" data-filename="training_risk.png">PNG</button>
+            </div>
+            <canvas id="trainChart"></canvas>
+            <div class="chart-totals small text-muted mt-2" id="trainChartTotal"></div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <script>window.DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=0&single=true&output=csv";</script>
+  <script>
+    // Data source
+    window.DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=0&single=true&output=csv";
+  </script>
   <script src="script.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
