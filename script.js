@@ -1,6 +1,6 @@
 // 1) YOUR PUBLISHED CSV LINKS
 const COMPANY_TOTALS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=1080547954&single=true&output=csv';
-const EXPIRIES_CSV       = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=2030320336&single=true&output=csv'; // now enabled
+const EXPIRIES_CSV       = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=2030320336&single=true&output=csv';
 
 // 2) Helpers
 async function fetchCSV(url) {
@@ -16,7 +16,7 @@ function parseCSV(text) {
     const cols = []; let cur=''; let q=false;
     for (let i=0;i<line.length;i++) {
       const ch=line[i];
-      if(ch=='"') { q=!q; continue; }
+      if(ch==='"') { q=!q; continue; }
       if(ch===',' && !q) { cols.push(cur.trim()); cur=''; continue; }
       cur+=ch;
     }
@@ -36,12 +36,11 @@ function mapCompanyTotals(rows) {
   const map = {};
   for (const r of rows) {
     if (!r || !r.length) continue;
-    // Find all text cells in the row as potential keys
+    // keys from any text cell
     const keys = r.filter(c => isNaN(parseFloat(c))).map(normalizeKey).filter(k=>k);
-    // Find the first numeric cell in the row as the value
+    // value from first numeric-looking cell
     let value = 0;
     for (const c of r) { const n=num(c); if(String(c).length>0 && (n || c==='0')){ value=n; break; } }
-    // Save for every discovered key (covers both Column C 'Key' and Column A labels)
     for (const k of keys) { if(!(k in map)) map[k]=value; }
   }
   return map;
@@ -62,14 +61,21 @@ function parseExpiries(rows){
 // 5) Render
 function getFirst(map, keys) {
   for (const k of keys) { const v = map[k.toLowerCase()]; if(v!==undefined) return v; }
-  return 0;
+  return undefined;
 }
 function renderKPIs(t) {
-  const totalBehaviour = getFirst(t, ['total behaviour']);
-  const totalEvents    = getFirst(t, ['total events']);
-  const hoursYTD       = getFirst(t, ['total man hours (ytd)','total man hours ytd','total man hours']);
-  const ltifrYTD       = getFirst(t, ['ltifr (ytd)','ltifr ytd','ltifr']);
-  const ltiYTD         = getFirst(t, ['lti (ytd)','lti ytd','lti']);
+  const totalBehaviour = getFirst(t, ['total behaviour']) || 0;
+
+  // total incidents & accidents: accept either name or compute from components
+  let totalEvents = getFirst(t, ['total incidents & accidents','total events']);
+  if (totalEvents === undefined) {
+    const parts = ['near miss','incident','accident','property or equipment damage','fatality'];
+    totalEvents = parts.map(p=>getFirst(t,[p])||0).reduce((a,b)=>a+b,0);
+  }
+
+  const hoursYTD = getFirst(t, ['total man hours (ytd)','total man hours ytd','total man hours']) || 0;
+  const ltifrYTD = getFirst(t, ['ltifr (ytd)','ltifr ytd','ltifr']) || 0;
+  const ltiYTD   = getFirst(t, ['lti (ytd)','lti ytd','lti']) || 0;
 
   document.getElementById('totalBehaviour').textContent = fmt(totalBehaviour);
   document.getElementById('totalEvents').textContent    = fmt(totalEvents);
@@ -78,34 +84,37 @@ function renderKPIs(t) {
   document.getElementById('ltiYTD').textContent         = fmt(ltiYTD);
 
   // minis
-  document.getElementById('sb').textContent = fmt(getFirst(t,['safe behaviour']));
-  document.getElementById('ub').textContent = fmt(getFirst(t,['unsafe behaviour']));
-  document.getElementById('sc').textContent = fmt(getFirst(t,['safe condition']));
-  document.getElementById('uc').textContent = fmt(getFirst(t,['unsafe condition']));
-  document.getElementById('pb').textContent = fmt(getFirst(t,['positive behaviour/action','positive behaviour','positive behavior/action']));
+  document.getElementById('sb').textContent = fmt(getFirst(t,['safe behaviour']) || 0);
+  document.getElementById('ub').textContent = fmt(getFirst(t,['unsafe behaviour']) || 0);
+  document.getElementById('sc').textContent = fmt(getFirst(t,['safe condition']) || 0);
+  document.getElementById('uc').textContent = fmt(getFirst(t,['unsafe condition']) || 0);
+  document.getElementById('pb').textContent = fmt(getFirst(t,['positive behaviour/action','positive behaviour','positive behavior/action']) || 0);
 
-  document.getElementById('nm').textContent = fmt(getFirst(t,['near miss']));
-  document.getElementById('in').textContent = fmt(getFirst(t,['incident']));
-  document.getElementById('ac').textContent = fmt(getFirst(t,['accident']));
-  document.getElementById('pd').textContent = fmt(getFirst(t,['property or equipment damage','property & equipment damage','property/equipment damage']));
-  document.getElementById('fa').textContent = fmt(getFirst(t,['fatality']));
+  document.getElementById('nm').textContent = fmt(getFirst(t,['near miss']) || 0);
+  document.getElementById('in').textContent = fmt(getFirst(t,['incident']) || 0);
+  document.getElementById('ac').textContent = fmt(getFirst(t,['accident']) || 0);
+  document.getElementById('pd').textContent = fmt(getFirst(t,['property or equipment damage','property & equipment damage','property/equipment damage']) || 0);
+  document.getElementById('fa').textContent = fmt(getFirst(t,['fatality']) || 0);
 }
 
 let behaviourChart, incidentChart;
 function renderCharts(t){
+  const totalIncAcc = (getFirst(t,['total incidents & accidents','total events']) ??
+    ['near miss','incident','accident','property or equipment damage','fatality'].map(k=>getFirst(t,[k])||0).reduce((a,b)=>a+b,0));
+
   const b = [
-    getFirst(t,['safe behaviour']),
-    getFirst(t,['unsafe behaviour']),
-    getFirst(t,['safe condition']),
-    getFirst(t,['unsafe condition']),
-    getFirst(t,['positive behaviour/action','positive behaviour'])
+    getFirst(t,['safe behaviour'])||0,
+    getFirst(t,['unsafe behaviour'])||0,
+    getFirst(t,['safe condition'])||0,
+    getFirst(t,['unsafe condition'])||0,
+    getFirst(t,['positive behaviour/action','positive behaviour'])||0
   ];
   const i = [
-    getFirst(t,['near miss']),
-    getFirst(t,['incident']),
-    getFirst(t,['accident']),
-    getFirst(t,['property or equipment damage']),
-    getFirst(t,['fatality'])
+    getFirst(t,['near miss'])||0,
+    getFirst(t,['incident'])||0,
+    getFirst(t,['accident'])||0,
+    getFirst(t,['property or equipment damage'])||0,
+    getFirst(t,['fatality'])||0
   ];
 
   const bc = document.getElementById('behaviourChart').getContext('2d');
@@ -113,7 +122,7 @@ function renderCharts(t){
   behaviourChart = new Chart(bc, {
     type:'bar',
     data: { labels:['Safe','Unsafe','Safe Cond','Unsafe Cond','Positive'], datasets:[{ label:'Count', data:b }] },
-    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Behaviour: ${fmt(getFirst(t,['total behaviour']))}`} } }
+    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Behaviour: ${fmt(getFirst(t,['total behaviour'])||0)}`} } }
   });
 
   const ic = document.getElementById('incidentChart').getContext('2d');
@@ -121,7 +130,7 @@ function renderCharts(t){
   incidentChart = new Chart(ic, {
     type:'bar',
     data: { labels:['Near Miss','Incident','Accident','Property/Equip Damage','Fatality'], datasets:[{ label:'Count', data:i }] },
-    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Events: ${fmt(getFirst(t,['total events']))}`} } }
+    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Incidents & Accidents: ${fmt(totalIncAcc)}`} } }
   });
 
   document.getElementById('dlBehaviour').onclick = () => { const a=document.createElement('a'); a.href=behaviourChart.toBase64Image('image/png',1); a.download='behaviour.png'; a.click(); };
