@@ -1,153 +1,139 @@
 // 1) YOUR PUBLISHED CSV LINKS
 const COMPANY_TOTALS_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=1080547954&single=true&output=csv';
-// If you also publish Compliance Expiries as CSV, paste it below. If left blank, the section will be hidden.
-const EXPIRIES_CSV = '';
+const EXPIRIES_CSV       = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=2030320336&single=true&output=csv'; // now enabled
 
-// 2) Small helpers
-async function fetchCSV(url){
-  const res = await fetch(url, { cache: 'no-store' });
+// 2) Helpers
+async function fetchCSV(url) {
+  const res = await fetch(url, { cache:'no-store' });
   if(!res.ok) throw new Error('Fetch failed: '+url);
   return (await res.text()).trim();
 }
-function parseCSV(text){
+function parseCSV(text) {
   const rows = [];
   const lines = text.split(/\r?\n/);
-  for (const line of lines){
-    // naive split that also trims wrapping quotes
-    const cols = line.split(',').map(s => s.replace(/^"(.*)"$/, '$1').trim());
-    rows.push(cols);
+  for (const line of lines) {
+    // split by commas not in quotes (basic)
+    const cols = []; let cur=''; let q=false;
+    for (let i=0;i<line.length;i++) {
+      const ch=line[i];
+      if(ch=='"') { q=!q; continue; }
+      if(ch===',' && !q) { cols.push(cur.trim()); cur=''; continue; }
+      cur+=ch;
+    }
+    cols.push(cur.trim());
+    rows.push(cols.map(s=>s.replace(/^"(.*)"$/,'$1')));
   }
   return rows;
 }
-function num(x){ const n = parseFloat(String(x).replace(/,/g,'')); return isNaN(n) ? 0 : n; }
-function fmt(n){ return new Intl.NumberFormat().format(n); }
+const num = (x)=>{ const n = parseFloat(String(x).replace(/,/g,'')); return isNaN(n)?0:n; };
+const fmt = (n)=> new Intl.NumberFormat().format(n);
 
-// 3) Build a map from Company Totals sheet
-function mapCompanyTotals(rows){
+// 3) Build a robust key→value map from the Company Totals CSV
+function normalizeKey(s) {
+  return String(s||'').split(':')[0].trim().toLowerCase();
+}
+function mapCompanyTotals(rows) {
   const map = {};
-  for (let i=0;i<rows.length;i++) {
-    const r = rows[i];
+  for (const r of rows) {
     if (!r || !r.length) continue;
-    const keyFromC = (r[2] || '').trim();
-    const keyFromA = (r[0] || '').split(':')[0].trim();
-    const key = (keyFromC && keyFromC.toLowerCase() !== 'key') ? keyFromC : keyFromA;
-    if (!key) continue;
-    // value: prefer col B, else first numeric in row
-    let v = num(r[1]);
-    if (!v) {
-      for (let j=0;j<r.length;j++) {
-        const maybe = num(r[j]);
-        if (maybe) { v = maybe; break; }
-      }
-    }
-    map[key.toLowerCase()] = v;
+    // Find all text cells in the row as potential keys
+    const keys = r.filter(c => isNaN(parseFloat(c))).map(normalizeKey).filter(k=>k);
+    // Find the first numeric cell in the row as the value
+    let value = 0;
+    for (const c of r) { const n=num(c); if(String(c).length>0 && (n || c==='0')){ value=n; break; } }
+    // Save for every discovered key (covers both Column C 'Key' and Column A labels)
+    for (const k of keys) { if(!(k in map)) map[k]=value; }
   }
   return map;
 }
 
-// 4) Parse Compliance Expiries (Item | DaysLeft)
+// 4) Compliance Expiries
 function parseExpiries(rows){
-  const out = [];
-  // assume headers on row 1: Item | Expiry (Days Left)
-  for (let i=1;i<rows.length;i++) {
-    const item = (rows[i][0]||'').trim();
-    const days = num(rows[i][1]);
-    if (item) out.push({ item, days });
+  const out=[];
+  for(let i=1;i<rows.length;i++) {
+    const item=(rows[i][0]||'').trim();
+    const days=num(rows[i][1]);
+    if(item) out.push({item,days});
   }
-  out.sort((a,b)=>a.days - b.days);
+  out.sort((a,b)=>a.days-b.days);
   return out;
 }
 
-// 5) Renderers
-function renderKPIs(t){
-  const get = k => t[k.toLowerCase()] ?? 0;
-  document.getElementById('totalBehaviour').textContent = fmt(get('total behaviour'));
-  document.getElementById('totalEvents').textContent    = fmt(get('total events'));
-  document.getElementById('hoursYTD').textContent       = fmt(get('total man hours (ytd)'));
-  document.getElementById('ltifrYTD').textContent       = (get('ltifr (ytd)') || 0).toFixed(2);
-  document.getElementById('ltiYTD').textContent         = fmt(get('lti (ytd)'));
+// 5) Render
+function getFirst(map, keys) {
+  for (const k of keys) { const v = map[k.toLowerCase()]; if(v!==undefined) return v; }
+  return 0;
+}
+function renderKPIs(t) {
+  const totalBehaviour = getFirst(t, ['total behaviour']);
+  const totalEvents    = getFirst(t, ['total events']);
+  const hoursYTD       = getFirst(t, ['total man hours (ytd)','total man hours ytd','total man hours']);
+  const ltifrYTD       = getFirst(t, ['ltifr (ytd)','ltifr ytd','ltifr']);
+  const ltiYTD         = getFirst(t, ['lti (ytd)','lti ytd','lti']);
+
+  document.getElementById('totalBehaviour').textContent = fmt(totalBehaviour);
+  document.getElementById('totalEvents').textContent    = fmt(totalEvents);
+  document.getElementById('hoursYTD').textContent       = fmt(hoursYTD);
+  document.getElementById('ltifrYTD').textContent       = (ltifrYTD||0).toFixed(2);
+  document.getElementById('ltiYTD').textContent         = fmt(ltiYTD);
+
+  // minis
+  document.getElementById('sb').textContent = fmt(getFirst(t,['safe behaviour']));
+  document.getElementById('ub').textContent = fmt(getFirst(t,['unsafe behaviour']));
+  document.getElementById('sc').textContent = fmt(getFirst(t,['safe condition']));
+  document.getElementById('uc').textContent = fmt(getFirst(t,['unsafe condition']));
+  document.getElementById('pb').textContent = fmt(getFirst(t,['positive behaviour/action','positive behaviour','positive behavior/action']));
+
+  document.getElementById('nm').textContent = fmt(getFirst(t,['near miss']));
+  document.getElementById('in').textContent = fmt(getFirst(t,['incident']));
+  document.getElementById('ac').textContent = fmt(getFirst(t,['accident']));
+  document.getElementById('pd').textContent = fmt(getFirst(t,['property or equipment damage','property & equipment damage','property/equipment damage']));
+  document.getElementById('fa').textContent = fmt(getFirst(t,['fatality']));
 }
 
 let behaviourChart, incidentChart;
-
 function renderCharts(t){
-  const get = k => t[k.toLowerCase()] ?? 0;
-
-  const behaviourData = [
-    get('safe behaviour'),
-    get('unsafe behaviour'),
-    get('safe condition'),
-    get('unsafe condition'),
-    get('positive behaviour/action')
+  const b = [
+    getFirst(t,['safe behaviour']),
+    getFirst(t,['unsafe behaviour']),
+    getFirst(t,['safe condition']),
+    getFirst(t,['unsafe condition']),
+    getFirst(t,['positive behaviour/action','positive behaviour'])
   ];
-  const incidentData = [
-    get('near miss'),
-    get('incident'),
-    get('accident'),
-    get('property or equipment damage'),
-    get('fatality')
+  const i = [
+    getFirst(t,['near miss']),
+    getFirst(t,['incident']),
+    getFirst(t,['accident']),
+    getFirst(t,['property or equipment damage']),
+    getFirst(t,['fatality'])
   ];
 
-  // Behaviour chart
   const bc = document.getElementById('behaviourChart').getContext('2d');
   if (behaviourChart) behaviourChart.destroy();
   behaviourChart = new Chart(bc, {
     type:'bar',
-    data:{
-      labels:['Safe Behaviour','Unsafe Behaviour','Safe Condition','Unsafe Condition','Positive Behaviour/Action'],
-      datasets:[{ label:'Count', data:behaviourData }]
-    },
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{display:false},
-        title:{display:true,text:`Total Behaviour: ${fmt(get('total behaviour'))}`}
-      }
-    }
+    data: { labels:['Safe','Unsafe','Safe Cond','Unsafe Cond','Positive'], datasets:[{ label:'Count', data:b }] },
+    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Behaviour: ${fmt(getFirst(t,['total behaviour']))}`} } }
   });
 
-  // Incident chart
   const ic = document.getElementById('incidentChart').getContext('2d');
   if (incidentChart) incidentChart.destroy();
   incidentChart = new Chart(ic, {
     type:'bar',
-    data:{
-      labels:['Near Miss','Incident','Accident','Property/Equipment Damage','Fatality'],
-      datasets:[{ label:'Count', data:incidentData }]
-    },
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{display:false},
-        title:{display:true,text:`Total Events: ${fmt(get('total events'))}`}
-      }
-    }
+    data: { labels:['Near Miss','Incident','Accident','Property/Equip Damage','Fatality'], datasets:[{ label:'Count', data:i }] },
+    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Events: ${fmt(getFirst(t,['total events']))}`} } }
   });
 
-  // Download buttons
-  document.getElementById('dlBehaviour').onclick = () => {
-    const a = document.createElement('a');
-    a.href = behaviourChart.toBase64Image('image/png',1);
-    a.download = 'behaviour.png'; a.click();
-  };
-  document.getElementById('dlIncident').onclick = () => {
-    const a = document.createElement('a');
-    a.href = incidentChart.toBase64Image('image/png',1);
-    a.download = 'incidents.png'; a.click();
-  };
+  document.getElementById('dlBehaviour').onclick = () => { const a=document.createElement('a'); a.href=behaviourChart.toBase64Image('image/png',1); a.download='behaviour.png'; a.click(); };
+  document.getElementById('dlIncident').onclick  = () => { const a=document.createElement('a'); a.href=incidentChart.toBase64Image('image/png',1); a.download='incidents.png'; a.click(); };
 }
 
 function renderCompliance(list){
-  const section = document.getElementById('complianceSection');
   const tbody = document.getElementById('complianceBody');
-  const note = document.getElementById('complianceNote');
-  if (!list || !list.length) {
-    note.textContent = 'Publish your Compliance Expiries tab as CSV and set EXPIRIES_CSV in script.js to show items here.';
-    tbody.innerHTML = '';
-    return;
-  }
-  note.textContent = '';
-  tbody.innerHTML = '';
+  const note  = document.getElementById('complianceNote');
+  tbody.innerHTML='';
+  if (!list.length) { note.textContent='No compliance items found.'; return; }
+  note.textContent='';
   const status = d => d<0 ? ['Expired','bad'] : d<=30 ? ['Warning','warn'] : ['OK','ok'];
   list.forEach(({item,days})=>{
     const [label, cls] = status(days);
@@ -159,26 +145,17 @@ function renderCompliance(list){
 
 // 6) Boot
 (async function init(){
-  try{
+  try {
     const totalsCSV = await fetchCSV(COMPANY_TOTALS_CSV);
     const totalsMap = mapCompanyTotals(parseCSV(totalsCSV));
     renderKPIs(totalsMap);
     renderCharts(totalsMap);
 
-    if (EXPIRIES_CSV && /^https?:/.test(EXPIRIES_CSV)) {
-      try {
-        const expCSV = await fetchCSV(EXPIRIES_CSV);
-        const expiries = parseExpiries(parseCSV(expCSV));
-        renderCompliance(expiries);
-      } catch (e) {
-        console.warn('Expiries fetch failed:', e);
-        renderCompliance([]);
-      }
-    } else {
-      renderCompliance([]);
-    }
-  }catch(err){
+    const expCSV = await fetchCSV(EXPIRIES_CSV);
+    const expiries = parseExpiries(parseCSV(expCSV));
+    renderCompliance(expiries);
+  } catch (err) {
     console.error(err);
-    alert('Could not load data. Check the CSV publish link(s) and sharing settings.');
+    alert('Could not load data. Check the CSV links and sharing are published to web.');
   }
 })();

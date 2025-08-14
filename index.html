@@ -5,29 +5,37 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Innovate – H&S Dashboard</title>
   <style>
-    :root { --card: #111827; --ink:#E5E7EB; --muted:#9CA3AF; }
-    body{margin:0;background:#0B1220;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-    header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem;border-bottom:1px solid #1F2937}
+    :root { --brand:#C8102E; --ink:#111111; --muted:#6B7280; --card:#FFFFFF; --line:#E5E7EB; }
+    *{box-sizing:border-box}
+    body{margin:0;background:#ffffff;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:5}
     header img{height:36px;width:auto}
-    header h1{font-size:1.125rem;margin:0;font-weight:600}
+    header h1{font-size:1.1rem;margin:0;font-weight:700;color:var(--brand)}
     .wrap{max-width:1100px;margin:0 auto;padding:1rem;display:grid;gap:1rem}
     .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1rem}
-    .card{background:var(--card);border:1px solid #1F2937;border-radius:16px;padding:1rem}
-    .kpi h3{margin:.25rem 0 .5rem;font-size:.85rem;color:var(--muted);font-weight:500}
-    .kpi .val{font-size:1.6rem;font-weight:700}
-    .section h2{margin:0 0 .75rem;font-size:1.05rem;color:var(--muted);font-weight:600}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1rem}
+    .kpi h3{margin:0 0 .35rem;font-size:.85rem;color:var(--muted);font-weight:600}
+    .kpi .val{font-size:1.6rem;font-weight:800;color:var(--brand)}
+    .section h2{margin:0 0 .75rem;font-size:1.05rem;color:var(--brand);font-weight:800}
     .chartBox{position:relative}
     .chartBtns{display:flex;gap:.5rem;margin-top:.5rem}
-    .btn{background:#111827;border:1px solid #374151;border-radius:10px;padding:.5rem .75rem;color:var(--ink);cursor:pointer}
+    .btn{background:#fff;border:1px solid var(--line);border-radius:10px;padding:.5rem .75rem;color:var(--brand);cursor:pointer;font-weight:700}
     table{width:100%;border-collapse:collapse}
-    th,td{padding:.6rem .5rem;border-bottom:1px solid #1F2937}
-    th{color:var(--muted);text-align:left;font-weight:600}
-    .pill{padding:.15rem .5rem;border-radius:999px;border:1px solid #374151;display:inline-block}
-    .ok{color:#10B981;border-color:#065F46}
-    .warn{color:#FBBF24;border-color:#7C2D12}
-    .bad{color:#F87171;border-color:#7F1D1D}
-    @media (max-width:900px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr));} }
-    @media (max-width:520px){ .kpis{grid-template-columns:1fr;} .btn{width:100%} }
+    th,td{padding:.6rem .5rem;border-bottom:1px solid var(--line)}
+    th{color:var(--muted);text-align:left;font-weight:700}
+    .pill{padding:.2rem .5rem;border-radius:999px;border:1px solid var(--line);display:inline-block;font-weight:700}
+    .ok{color:#16A34A;border-color:#A7F3D0;background:#ECFDF5}
+    .warn{color:#B45309;border-color:#FDE68A;background:#FFFBEB}
+    .bad{color:#B91C1C;border-color:#FECACA;background:#FEF2F2}
+    .mini-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.75rem}
+    .mini .val{font-size:1.2rem}
+    @media (max-width:1000px){ .kpis{grid-template-columns:repeat(3,minmax(0,1fr));} .mini-grid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+    @media (max-width:640px){
+      .kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .mini-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .btn{width:100%}
+    }
+    @media (max-width:420px){ .kpis,.mini-grid{grid-template-columns:1fr;} }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -44,6 +52,22 @@
       <div class="card kpi"><h3>Total Man Hours (YTD)</h3><div id="hoursYTD" class="val">—</div></div>
       <div class="card kpi"><h3>LTIFR (YTD)</h3><div id="ltifrYTD" class="val">—</div></div>
       <div class="card kpi"><h3>LTI (YTD)</h3><div id="ltiYTD" class="val">—</div></div>
+    </section>
+
+    <section class="section card">
+      <h2>Behaviour & Event Snapshots</h2>
+      <div class="mini-grid">
+        <div class="card kpi mini"><h3>Safe Behaviour</h3><div id="sb" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Unsafe Behaviour</h3><div id="ub" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Safe Condition</h3><div id="sc" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Unsafe Condition</h3><div id="uc" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Positive Behaviour</h3><div id="pb" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Near Miss</h3><div id="nm" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Incident</h3><div id="in" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Accident</h3><div id="ac" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Property/Equip Damage</h3><div id="pd" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Fatality</h3><div id="fa" class="val">—</div></div>
+      </div>
     </section>
 
     <section class="section card">
@@ -64,7 +88,7 @@
         <thead><tr><th>Item</th><th>Days Left</th><th>Status</th></tr></thead>
         <tbody id="complianceBody"></tbody>
       </table>
-      <div id="complianceNote" style="margin-top:8px;color:#9CA3AF;"></div>
+      <div id="complianceNote" style="margin-top:8px;color:var(--muted);"></div>
     </section>
   </main>
 
