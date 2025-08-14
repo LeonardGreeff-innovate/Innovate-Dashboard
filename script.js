@@ -98,10 +98,40 @@ function renderKPIs(t) {
 }
 
 let behaviourChart, incidentChart;
-function renderCharts(t){
-  const totalIncAcc = (getFirst(t,['total incidents & accidents','total events']) ??
-    ['near miss','incident','accident','property or equipment damage','fatality'].map(k=>getFirst(t,[k])||0).reduce((a,b)=>a+b,0));
 
+function makeRedGradient(ctx){
+  const g = ctx.createLinearGradient(0,0,0,220);
+  g.addColorStop(0,'#f6c3cc'); // light
+  g.addColorStop(.5,'#e44a60'); // mid
+  g.addColorStop(1,'#C8102E'); // brand
+  return g;
+}
+
+function chartOptions(title){
+  return {
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      title:{display:true,text:title,color:'#C8102E',font:{weight:'bold'}},
+      datalabels:{
+        anchor:'end',
+        align:'end',
+        color:'#C8102E',
+        formatter:(v)=> fmt(v),
+        clamp:true,
+        clip:false,
+        font:{weight:'bold'}
+      }
+    },
+    scales:{
+      x:{ ticks:{ color:'#6B7280' }, grid:{ display:false } },
+      y:{ ticks:{ color:'#6B7280' }, grid:{ color:'#F3F4F6' }, beginAtZero:true, precision:0 }
+    }
+  };
+}
+
+function renderCharts(t){
   const b = [
     getFirst(t,['safe behaviour'])||0,
     getFirst(t,['unsafe behaviour'])||0,
@@ -117,20 +147,28 @@ function renderCharts(t){
     getFirst(t,['fatality'])||0
   ];
 
-  const bc = document.getElementById('behaviourChart').getContext('2d');
+  const bcCtx = document.getElementById('behaviourChart').getContext('2d');
+  const icCtx = document.getElementById('incidentChart').getContext('2d');
+
   if (behaviourChart) behaviourChart.destroy();
-  behaviourChart = new Chart(bc, {
+  behaviourChart = new Chart(bcCtx, {
     type:'bar',
-    data: { labels:['Safe','Unsafe','Safe Cond','Unsafe Cond','Positive'], datasets:[{ label:'Count', data:b }] },
-    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Behaviour: ${fmt(getFirst(t,['total behaviour'])||0)}`} } }
+    data: { 
+      labels:['Safe','Unsafe','Safe Cond','Unsafe Cond','Positive'],
+      datasets:[{ label:'Count', data:b, backgroundColor: makeRedGradient(bcCtx), borderColor:'#8A091E', borderWidth:1.2, maxBarThickness:50 }]
+    },
+    options: chartOptions(`Total Behaviour: ${fmt((getFirst(t,['total behaviour'])||0))}`)
   });
 
-  const ic = document.getElementById('incidentChart').getContext('2d');
   if (incidentChart) incidentChart.destroy();
-  incidentChart = new Chart(ic, {
+  const totalIncAcc = (getFirst(t,['total incidents & accidents','total events']) ?? i.reduce((a,b)=>a+b,0));
+  incidentChart = new Chart(icCtx, {
     type:'bar',
-    data: { labels:['Near Miss','Incident','Accident','Property/Equip Damage','Fatality'], datasets:[{ label:'Count', data:i }] },
-    options: { responsive:true, plugins:{ legend:{display:false}, title:{display:true,text:`Total Incidents & Accidents: ${fmt(totalIncAcc)}`} } }
+    data: { 
+      labels:['Near Miss','Incident','Accident','Property/Equip Damage','Fatality'],
+      datasets:[{ label:'Count', data:i, backgroundColor: makeRedGradient(icCtx), borderColor:'#8A091E', borderWidth:1.2, maxBarThickness:50 }]
+    },
+    options: chartOptions(`Total Incidents & Accidents: ${fmt(totalIncAcc)}`)
   });
 
   document.getElementById('dlBehaviour').onclick = () => { const a=document.createElement('a'); a.href=behaviourChart.toBase64Image('image/png',1); a.download='behaviour.png'; a.click(); };

@@ -38,6 +38,7 @@
     @media (max-width:420px){ .kpis,.mini-grid{grid-template-columns:1fr;} }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 </head>
 <body>
   <header>
@@ -72,13 +73,13 @@
 
     <section class="section card">
       <h2>Behaviour Breakdown</h2>
-      <div class="chartBox"><canvas id="behaviourChart" height="180"></canvas></div>
+      <div class="chartBox"><canvas id="behaviourChart" height="220"></canvas></div>
       <div class="chartBtns"><button class="btn" id="dlBehaviour">Download PNG</button></div>
     </section>
 
     <section class="section card">
       <h2>Incident / Accident Breakdown</h2>
-      <div class="chartBox"><canvas id="incidentChart" height="180"></canvas></div>
+      <div class="chartBox"><canvas id="incidentChart" height="220"></canvas></div>
       <div class="chartBtns"><button class="btn" id="dlIncident">Download PNG</button></div>
     </section>
 
