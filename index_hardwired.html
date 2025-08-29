@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Innovate – H&S Dashboard</title>
+  <style>
+    :root { --brand:#C8102E; --ink:#111111; --muted:#6B7280; --card:#FFFFFF; --line:#E5E7EB; }
+    *{box-sizing:border-box}
+    body{margin:0;background:#ffffff;color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:5}
+    header img{height:36px;width:auto}
+    header h1{font-size:1.1rem;margin:0;font-weight:700;color:var(--brand)}
+    .wrap{max-width:1100px;margin:0 auto;padding:1rem;display:grid;gap:1rem}
+    .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1rem}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1rem}
+    .kpi h3{margin:0 0 .35rem;font-size:.85rem;color:var(--muted);font-weight:600}
+    .kpi .val{font-size:1.6rem;font-weight:800;color:var(--brand)}
+    .section h2{margin:0 0 .75rem;font-size:1.05rem;color:var(--brand);font-weight:800}
+    .chartBox{position:relative}
+    .chartBtns{display:flex;gap:.5rem;margin-top:.5rem}
+    .btn{background:#fff;border:1px solid var(--line);border-radius:10px;padding:.5rem .75rem;color:var(--brand);cursor:pointer;font-weight:700}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:.6rem .5rem;border-bottom:1px solid var(--line)}
+    th{color:var(--muted);text-align:left;font-weight:700}
+    .pill{padding:.2rem .5rem;border-radius:999px;border:1px solid var(--line);display:inline-block;font-weight:700}
+    .ok{color:#16A34A;border-color:#A7F3D0;background:#ECFDF5}
+    .warn{color:#B45309;border-color:#FDE68A;background:#FFFBEB}
+    .bad{color:#B91C1C;border-color:#FECACA;background:#FEF2F2}
+    .mini-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.75rem}
+    .mini .val{font-size:1.2rem}
+    @media (max-width:1000px){ .kpis{grid-template-columns:repeat(3,minmax(0,1fr));} .mini-grid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+    @media (max-width:640px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr));} .mini-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .btn{width:100%} }
+    @media (max-width:420px){ .kpis,.mini-grid{grid-template-columns:1fr;} }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body>
+  <header>
+    <img src="logo.png" alt="Innovate logo" />
+    <h1>Innovate – Health & Safety Dashboard</h1>
+  </header>
+
+  <main class="wrap">
+    <section class="kpis">
+      <div class="card kpi"><h3>Total Behaviour</h3><div id="totalBehaviour" class="val">—</div></div>
+      <div class="card kpi"><h3>Total Incidents & Accidents</h3><div id="totalEvents" class="val">—</div></div>
+      <div class="card kpi"><h3>Total Man Hours (YTD)</h3><div id="hoursYTD" class="val">—</div></div>
+      <div class="card kpi"><h3>LTIFR (YTD)</h3><div id="ltifrYTD" class="val">—</div></div>
+      <div class="card kpi"><h3>LTI (YTD)</h3><div id="ltiYTD" class="val">—</div></div>
+    </section>
+
+    <section class="section card">
+      <h2>Behaviour & Event Snapshots</h2>
+      <div class="mini-grid">
+        <div class="card kpi mini"><h3>Safe Behaviour</h3><div id="sb" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Unsafe Behaviour</h3><div id="ub" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Safe Condition</h3><div id="sc" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Unsafe Condition</h3><div id="uc" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Positive Behaviour</h3><div id="pb" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Near Miss</h3><div id="nm" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Incident</h3><div id="in" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Accident</h3><div id="ac" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Property/Equip Damage</h3><div id="pd" class="val">—</div></div>
+        <div class="card kpi mini"><h3>Fatality</h3><div id="fa" class="val">—</div></div>
+      </div>
+    </section>
+
+    <section class="section card">
+      <h2>Behaviour Breakdown</h2>
+      <div class="chartBox"><canvas id="behaviourChart" height="220"></canvas></div>
+      <div class="chartBtns"><button class="btn" id="dlBehaviour">Download PNG</button></div>
+    </section>
+
+    <section class="section card">
+      <h2>Incident / Accident Breakdown</h2>
+      <div class="chartBox"><canvas id="incidentChart" height="220"></canvas></div>
+      <div class="chartBtns"><button class="btn" id="dlIncident">Download PNG</button></div>
+    </section>
+
+    <section class="section card" id="complianceSection">
+      <h2>Compliance – Days Left</h2>
+      <table>
+        <thead><tr><th>Item</th><th>Days Left</th><th>Status</th></tr></thead>
+        <tbody id="complianceBody"></tbody>
+      </table>
+      <div id="complianceNote" style="margin-top:8px;color:var(--muted);"></div>
+    </section>
+  </main>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTXQVIPN42E20By0btiM2IFinhYkeNeYuz66b7bA5QEukcD_gLN-g7LGyArw05zaMJssbMxJm68DAkX/pub?gid=2117097934&single=true&output=csv";
+
+const COLS = {
+  safeBehaviour: "Safe Behaviour",
+  unsafeBehaviour: "Unsafe Behaviour",
+  safeCondition: "Safe Condition",
+  unsafeCondition: "Unsafe Condition",
+  positiveBehaviour: "Positive Behaviour/Action",
+  totalBehaviour: "Total Behaviour",
+  nearMiss: "Near Miss",
+  incident: "Incident",
+  accident: "Accident",
+  propertyDamage: "Property or Equipment Damage",
+  fatality: "Fatality",
+  totalEvents: "Total Events"
+};
+
+const COMPLIANCE_DAYS_LEFT = [
+  "PAT at Office (Days Left)",
+  "Public Liability (Days Left)",
+  "Employers Liability (Days Left)",
+  "Contractors Combined Liability (Days Left)",
+  "Hired In Plant (Days Left)",
+  "Office Fire Extinguisher (Days Left)",
+  "H&S Policy (Days Left)",
+  "Office EICR (NICEIC) Electrical Certificate (Days Left)"
+];
+
+const OPTIONAL = {
+  hoursYTD: ["Total Man Hours (YTD)", "Man Hours (YTD)", "Hours YTD", "Man Hours"],
+  ltifrYTD: ["LTIFR (YTD)", "LTIFR"],
+  ltiYTD: ["LTI (YTD)", "LTI"]
+};
+
+function csvToArray(text) {
+  const rows = []; let row = []; let cell = ''; let inQuotes = false;
+  for (let i=0;i<text.length;i++) { const ch=text[i], nx=text[i+1];
+    if (inQuotes) { if (ch === '"' && nx === '"') { cell += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { cell += ch; } }
+    else { if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(cell); cell=''; }
+      else if (ch === '\n') { row.push(cell); rows.push(row); row=[]; cell=''; }
+      else if (ch === '\r') { /* skip */ }
+      else { cell += ch; } }
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+function hIndex(headers, label){ return headers.findIndex(h => (h||'').trim() === label.trim()); }
+function anyIndex(headers, list){ for(const l of list){ const i=hIndex(headers,l); if(i>=0) return i; } return -1; }
+function num(v){ if (v===undefined||v===null||v==="") return null; const n = parseFloat(String(v).replace(/[, ]/g,'')); return isNaN(n)?null:n; }
+function setVal(id, v){ document.getElementById(id).textContent = (v===null||v===undefined||v==="") ? "—" : (typeof v==="number" ? v.toLocaleString() : v); }
+function statusPill(days){
+  const s = document.createElement('span');
+  if (days===null || days==="") { s.textContent = ""; return s; }
+  const n = Number(days);
+  if (isNaN(n)) { s.textContent = ""; return s; }
+  if (n < 0) { s.textContent = "Expired"; s.className = "pill bad"; }
+  else if (n <= 30) { s.textContent = "Due soon"; s.className = "pill warn"; }
+  else { s.textContent = "OK"; s.className = "pill ok"; }
+  return s;
+}
+
+async function loadCSV(){
+  const res = await fetch(CSV_URL);
+  if(!res.ok){ alert("Could not load data: HTTP "+res.status); throw new Error(res.status); }
+  const text = await res.text();
+  const rows = csvToArray(text);
+  if (!rows.length) throw new Error("CSV empty");
+  const headers = rows[0].map(h => (h||'').trim());
+  const data = rows.slice(1).filter(r => r.some(c => (c||'').trim()!==''));
+  return { headers, data };
+}
+
+function computeFromTotals(headers, row){
+  const i = k => hIndex(headers, k);
+  const get = k => { const idx=i(k); return idx>=0 ? row[idx] : ""; };
+  const toNum = k => num(get(k)) ?? 0;
+
+  const totals = {
+    sb: toNum(COLS.safeBehaviour),
+    ub: toNum(COLS.unsafeBehaviour),
+    sc: toNum(COLS.safeCondition),
+    uc: toNum(COLS.unsafeCondition),
+    pb: toNum(COLS.positiveBehaviour),
+    totalBehaviour: num(get(COLS.totalBehaviour)),
+    nm: toNum(COLS.nearMiss),
+    in: toNum(COLS.incident),
+    ac: toNum(COLS.accident),
+    pd: toNum(COLS.propertyDamage),
+    fa: toNum(COLS.fatality),
+    totalEvents: num(get(COLS.totalEvents)),
+    hoursYTD: null,
+    ltifrYTD: null,
+    ltiYTD: null
+  };
+
+  if (totals.totalBehaviour===null) totals.totalBehaviour = totals.sb+totals.ub+totals.sc+totals.uc+totals.pb;
+  if (totals.totalEvents===null) totals.totalEvents = totals.nm+totals.in+totals.ac+totals.pd+totals.fa;
+
+  const hIdx = anyIndex(headers, OPTIONAL.hoursYTD);
+  const ltiIdx = anyIndex(headers, OPTIONAL.ltiYTD);
+  const ltifrIdx = anyIndex(headers, OPTIONAL.ltifrYTD);
+  totals.hoursYTD = hIdx>=0 ? num(row[hIdx]) : null;
+  totals.ltiYTD   = ltiIdx>=0 ? num(row[ltiIdx]) : null;
+  totals.ltifrYTD = ltifrIdx>=0 ? num(row[ltifrIdx]) : null;
+
+  return totals;
+}
+
+function renderCompliance(headers, row){
+  const body = document.getElementById("complianceBody");
+  body.innerHTML = "";
+  let count = 0;
+  COMPLIANCE_DAYS_LEFT.forEach(label => {
+    const idx = hIndex(headers, label);
+    if (idx < 0) return;
+    const v = row[idx];
+    if (v==="" || v===null || v===undefined) return;
+    const tr = document.createElement("tr");
+    const prettyName = label.replace(" (Days Left)", "");
+    const days = num(v);
+    const tdItem = document.createElement("td"); tdItem.textContent = prettyName;
+    const tdDays = document.createElement("td"); tdDays.textContent = days===null ? "" : days;
+    const tdStatus = document.createElement("td"); tdStatus.appendChild(statusPill(days));
+    tr.appendChild(tdItem); tr.appendChild(tdDays); tr.appendChild(tdStatus);
+    body.appendChild(tr); count++;
+  });
+  document.getElementById("complianceNote").textContent = count? "" : "No compliance (Days Left) values found in the first row.";
+}
+
+let behaviourChart, incidentChart;
+function drawCharts(t){
+  const bCtx = document.getElementById('behaviourChart').getContext('2d');
+  const iCtx = document.getElementById('incidentChart').getContext('2d');
+  const behaviourData = [t.sb,t.ub,t.sc,t.uc,t.pb];
+  const incidentData  = [t.nm,t.in,t.ac,t.pd,t.fa];
+
+  if (behaviourChart) behaviourChart.destroy();
+  if (incidentChart) incidentChart.destroy();
+
+  behaviourChart = new Chart(bCtx, { type:'bar', data:{ labels:['Safe','Unsafe','Safe Cond','Unsafe Cond','Positive'], datasets:[{ data: behaviourData }] }, options:{ responsive:true, plugins:{ legend:{display:false}, datalabels:{anchor:'end',align:'top',formatter:v=>v||''} } } });
+  incidentChart  = new Chart(iCtx, { type:'bar', data:{ labels:['Near Miss','Incident','Accident','Property','Fatality'], datasets:[{ data: incidentData }] }, options:{ responsive:true, plugins:{ legend:{display:false}, datalabels:{anchor:'end',align:'top',formatter:v=>v||''} } } });
+
+  document.getElementById('dlBehaviour').onclick = () => { const a=document.createElement('a'); a.href=behaviourChart.toBase64Image(); a.download='behaviour.png'; a.click(); };
+  document.getElementById('dlIncident').onclick  = () => { const a=document.createElement('a'); a.href=incidentChart.toBase64Image();  a.download='incident.png';  a.click(); };
+}
+
+(async function init(){
+  try{
+    const {headers, data} = await loadCSV();
+    const row = data.find(r => r.some(c => (c||'').trim()!=='')) || headers.map(()=>'');
+    const totals = computeFromTotals(headers, row);
+
+    setVal('totalBehaviour', totals.totalBehaviour);
+    setVal('totalEvents',    totals.totalEvents);
+    setVal('hoursYTD',       totals.hoursYTD);
+    setVal('ltifrYTD',       totals.ltifrYTD);
+    setVal('ltiYTD',         totals.ltiYTD);
+    setVal('sb', totals.sb); setVal('ub', totals.ub);
+    setVal('sc', totals.sc); setVal('uc', totals.uc);
+    setVal('pb', totals.pb); setVal('nm', totals.nm);
+    setVal('in', totals.in); setVal('ac', totals.ac);
+    setVal('pd', totals.pd); setVal('fa', totals.fa);
+
+    drawCharts(totals);
+    renderCompliance(headers, row);
+  } catch(err){
+    alert('Dashboard failed to load: ' + err.message + '\nCheck that the CSV link is correct and published.');
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
