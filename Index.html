@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Innovate – H&S Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --brand: #C8102E;
+            --ink: #111111;
+            --muted: #6B7280;
+            --card: #FFFFFF;
+            --line: #E5E7EB;
+            --success: #16A34A;
+            --warning: #B45309;
+            --danger: #B91C1C;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+            background: #f8fafc;
+            color: var(--ink);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        header img {
+            height: 40px;
+        }
+        
+        header h1 {
+            color: var(--brand);
+            font-size: 1.5rem;
+        }
+        
+        .sheet-config {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .sheet-config h2 {
+            color: var(--brand);
+            margin-bottom: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        button {
+            background: var(--brand);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #a00c24;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .kpi h3 {
+            font-size: 0.9rem;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+        
+        .kpi .val {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--brand);
+        }
+        
+        .section h2 {
+            color: var(--brand);
+            margin-bottom: 1rem;
+        }
+        
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .mini .val {
+            font-size: 1.5rem;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+        
+        .chart-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: var(--brand);
+            border: 1px solid var(--line);
+        }
+        
+        .btn-secondary:hover {
+            background: #f9fafb;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--line);
+        }
+        
+        th {
+            color: var(--muted);
+            font-weight: 600;
+        }
+        
+        .status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .status-ok {
+            background: #ECFDF5;
+            color: var(--success);
+        }
+        
+        .status-warn {
+            background: #FFFBEB;
+            color: var(--warning);
+        }
+        
+        .status-bad {
+            background: #FEF2F2;
+            color: var(--danger);
+        }
+        
+        .instructions {
+            background: #f1f5f9;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+        }
+        
+        .instructions h3 {
+            color: var(--brand);
+            margin-bottom: 1rem;
+        }
+        
+        .instructions ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .instructions code {
+            background: #e2e8f0;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(200, 16, 46, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--brand);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: var(--danger);
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .kpis {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .mini-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .kpis {
+                grid-template-columns: 1fr;
+            }
+            
+            .mini-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="https://via.placeholder.com/150x50/C8102E/FFFFFF?text=Innovate" alt="Innovate logo">
+        <h1>Innovate – Health & Safety Dashboard</h1>
+    </header>
+    
+    <div class="container">
+        <div class="sheet-config">
+            <h2>Google Sheets Configuration</h2>
+            <div class="form-group">
+                <label for="script-url">Google Apps Script URL</label>
+                <input type="text" id="script-url" value="https://script.google.com/macros/s/AKfycbz6-vt53YMSN6MGB5TZnD3K8DESaqJdzMqhM2DYK_qyNMh4ZhDgq2FWZeQQG9ld5p9i/exec" readonly>
+                <p><small>This URL connects to your Google Apps Script which fetches data from your sheet</small></p>
+            </div>
+            <button id="load-data">Load Dashboard Data</button>
+            <div id="error-message" class="error" style="display: none;"></div>
+        </div>
+        
+        <div class="dashboard" id="dashboard">
+            <div class="kpis">
+                <div class="card kpi">
+                    <h3>Total Behaviour</h3>
+                    <div id="totalBehaviour" class="val">—</div>
+                </div>
+                <div class="card kpi">
+                    <h3>Total Incidents & Accidents</h3>
+                    <div id="totalEvents" class="val">—</div>
+                </div>
+                <div class="card kpi">
+                    <h3>Total Man Hours (YTD)</h3>
+                    <div id="hoursYTD" class="val">—</div>
+                </div>
+                <div class="card kpi">
+                    <h3>LTIFR (YTD)</h3>
+                    <div id="ltifrYTD" class="val">—</div>
+                </div>
+                <div class="card kpi">
+                    <h3>LTI (YTD)</h3>
+                    <div id="ltiYTD" class="val">—</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Behaviour & Event Snapshots</h2>
+                <div class="mini-grid">
+                    <div class="card kpi mini">
+                        <h3>Safe Behaviour</h3>
+                        <div id="sb" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Unsafe Behaviour</h3>
+                        <div id="ub" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Safe Condition</h3>
+                        <div id="sc" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Unsafe Condition</h3>
+                        <div id="uc" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Positive Behaviour</h3>
+                        <div id="pb" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Near Miss</h3>
+                        <div id="nm" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Incident</h3>
+                        <div id="in" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Accident</h3>
+                        <div id="ac" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Property/Equip Damage</h3>
+                        <div id="pd" class="val">—</div>
+                    </div>
+                    <div class="card kpi mini">
+                        <h3>Fatality</h3>
+                        <div id="fa" class="val">—</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Behaviour Breakdown</h2>
+                <div class="chart-container">
+                    <canvas id="behaviourChart"></canvas>
+                </div>
+                <div class="chart-buttons">
+                    <button id="dlBehaviour" class="btn-secondary">Download PNG</button>
+                    <button id="refreshData" class="btn-secondary">Refresh Data</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Incident / Accident Breakdown</h2>
+                <div class="chart-container">
+                    <canvas id="incidentChart"></canvas>
+                </div>
+                <div class="chart-buttons">
+                    <button id="dlIncident" class="btn-secondary">Download PNG</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Compliance – Days Left</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Days Left</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="complianceBody">
+                        <tr>
+                            <td>Safety Training</td>
+                            <td>15</td>
+                            <td><span class="status status-ok">OK</span></td>
+                        </tr>
+                        <tr>
+                            <td>Equipment Inspection</td>
+                            <td>5</td>
+                            <td><span class="status status-warn">Warning</span></td>
+                        </tr>
+                        <tr>
+                            <td>Audit Completion</td>
+                            <td>-2</td>
+                            <td><span class="status status-bad">Overdue</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>How This Works</h3>
+            <ol>
+                <li>Your Google Apps Script is deployed as a web app</li>
+                <li>When you click "Load Dashboard Data", we fetch data from your script</li>
+                <li>The script reads data from your Google Sheet and returns it as JSON</li>
+                <li>The dashboard processes this data and displays it in the visualizations</li>
+                <li>Click "Refresh Data" to update the dashboard with the latest data from your sheet</li>
+            </ol>
+            <p><strong>Note:</strong> Make sure your Google Apps Script is properly set up to read data from your sheet and return it in JSON format.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const scriptUrlInput = document.getElementById('script-url');
+            const loadDataBtn = document.getElementById('load-data');
+            const refreshDataBtn = document.getElementById('refreshData');
+            const dashboard = document.getElementById('dashboard');
+            const errorMessage = document.getElementById('error-message');
+            
+            let behaviourChart, incidentChart;
+            
+            // Load data when button is clicked
+            loadDataBtn.addEventListener('click', function() {
+                const scriptUrl = scriptUrlInput.value.trim();
+                
+                if (!scriptUrl) {
+                    showError('Please enter your Google Apps Script URL');
+                    return;
+                }
+                
+                loadData(scriptUrl);
+            });
+            
+            // Refresh data
+            refreshDataBtn.addEventListener('click', function() {
+                const scriptUrl = scriptUrlInput.value.trim();
+                
+                if (!scriptUrl) {
+                    showError('Please enter your Google Apps Script URL');
+                    return;
+                }
+                
+                loadData(scriptUrl);
+            });
+            
+            // Function to load data from Google Apps Script
+            function loadData(scriptUrl) {
+                // Show loading state
+                document.querySelectorAll('.val').forEach(el => {
+                    el.innerHTML = '<span class="loading"></span>';
+                });
+                
+                // Hide any previous errors
+                errorMessage.style.display = 'none';
+                
+                // Fetch data from Google Apps Script
+                fetch(scriptUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Process the data from your Google Apps Script
+                        // The structure will depend on how you've set up your script
+                        const processedData = processData(data);
+                        
+                        // Update the dashboard with the processed data
+                        updateDashboard(processedData);
+                        
+                        // Show the dashboard
+                        dashboard.style.display = 'block';
+                        
+                        // Scroll to dashboard
+                        dashboard.scrollIntoView({ behavior: 'smooth' });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        showError('Failed to load data. Please check your Apps Script URL and make sure your script is deployed correctly.');
+                        
+                        // For demonstration, we'll use mock data if the fetch fails
+                        useMockData();
+                    });
+            }
+            
+            // Function to process data from Google Apps Script
+            function processData(data) {
+                // This function will depend on the structure of data returned by your Apps Script
+                // For now, we'll assume it returns an array of objects with metric and value properties
+                
+                const result = {};
+                
+                if (Array.isArray(data)) {
+                    data.forEach(item => {
+                        if (item.metric && item.value !== undefined) {
+                            // Convert metric names to match our dashboard IDs
+                            const metricKey = item.metric.toLowerCase().replace(/\s+/g, '');
+                            result[metricKey] = item.value;
+                        }
+                    });
+                }
+                
+                return result;
+            }
+            
+            // Function to use mock data (for demonstration or fallback)
+            function useMockData() {
+                const mockData = {
+                    totalBehaviour: 245,
+                    totalEvents: 32,
+                    hoursYTD: 125430,
+                    ltifrYTD: 1.2,
+                    ltiYTD: 2,
+                    sb: 120,
+                    ub: 45,
+                    sc: 35,
+                    uc: 25,
+                    pb: 20,
+                    nm: 15,
+                    in: 10,
+                    ac: 5,
+                    pd: 2,
+                    fa: 0
+                };
+                
+                updateDashboard(mockData);
+                dashboard.style.display = 'block';
+            }
+            
+            // Function to show error message
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+            
+            // Function to update the dashboard with data
+            function updateDashboard(data) {
+                // Update KPIs
+                document.getElementById('totalBehaviour').textContent = data.totalBehaviour || '—';
+                document.getElementById('totalEvents').textContent = data.totalEvents || '—';
+                document.getElementById('hoursYTD').textContent = data.hoursYTD ? data.hoursYTD.toLocaleString() : '—';
+                document.getElementById('ltifrYTD').textContent = data.ltifrYTD || '—';
+                document.getElementById('ltiYTD').textContent = data.ltiYTD || '—';
+                
+                // Update behaviour snapshots
+                document.getElementById('sb').textContent = data.sb || '—';
+                document.getElementById('ub').textContent = data.ub || '—';
+                document.getElementById('sc').textContent = data.sc || '—';
+                document.getElementById('uc').textContent = data.uc || '—';
+                document.getElementById('pb').textContent = data.pb || '—';
+                
+                // Update incident snapshots
+                document.getElementById('nm').textContent = data.nm || '—';
+                document.getElementById('in').textContent = data.in || '—';
+                document.getElementById('ac').textContent = data.ac || '—';
+                document.getElementById('pd').textContent = data.pd || '—';
+                document.getElementById('fa').textContent = data.fa || '—';
+                
+                // Update charts
+                updateCharts(data);
+            }
+            
+            // Function to update charts
+            function updateCharts(data) {
+                const behaviourCtx = document.getElementById('behaviourChart').getContext('2d');
+                const incidentCtx = document.getElementById('incidentChart').getContext('2d');
+                
+                // Destroy existing charts if they exist
+                if (behaviourChart) {
+                    behaviourChart.destroy();
+                }
+                if (incidentChart) {
+                    incidentChart.destroy();
+                }
+                
+                // Create behaviour chart
+                behaviourChart = new Chart(behaviourCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Safe Behaviour', 'Unsafe Behaviour', 'Safe Condition', 'Unsaf Condition', 'Positive Behaviour'],
+                        datasets: [{
+                            label: 'Count',
+                            data: [
+                                data.sb || 0,
+                                data.ub || 0,
+                                data.sc || 0,
+                                data.uc || 0,
+                                data.pb || 0
+                            ],
+                            backgroundColor: [
+                                '#16A34A', '#DC2626', '#2563EB', '#CA8A04', '#9333EA'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                
+                // Create incident chart
+                incidentChart = new Chart(incidentCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Near Miss', 'Incident', 'Accident', 'Property Damage', 'Fatality'],
+                        datasets: [{
+                            data: [
+                                data.nm || 0,
+                                data.in || 0,
+                                data.ac || 0,
+                                data.pd || 0,
+                                data.fa || 0
+                            ],
+                            backgroundColor: [
+                                '#F59E0B', '#EF4444', '#DC2626', '#8B5CF6', '#000000'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Set up download buttons
+            document.getElementById('dlBehaviour').addEventListener('click', function() {
+                if (behaviourChart) {
+                    const link = document.createElement('a');
+                    link.href = behaviourChart.toBase64Image();
+                    link.download = 'behaviour-chart.png';
+                    link.click();
+                }
+            });
+            
+            document.getElementById('dlIncident').addEventListener('click', function() {
+                if (incidentChart) {
+                    const link = document.createElement('a');
+                    link.href = incidentChart.toBase64Image();
+                    link.download = 'incident-chart.png';
+                    link.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
